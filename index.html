@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Тест - Скачать PDF</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background: #0f172a; color: #f8fafc; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        
+        /* Скрытый блок для генерации PDF */
+        #cert-template { 
+            position: absolute; 
+            left: -9999px; 
+            top: -9999px; 
+            width: 800px; 
+            padding: 60px; 
+            background: #1e293b; 
+            border: 12px double #38bdf8; 
+            text-align: center; 
+            color: white;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div id="app" class="w-full max-w-xl">
+        <!-- ГЛАВНЫЙ ЭКРАН -->
+        <div id="start-screen" class="glass p-8 rounded-3xl shadow-2xl text-center">
+            <h1 class="text-4xl font-black mb-6 text-blue-400 uppercase tracking-tighter">Python Тест</h1>
+            <p class="text-slate-400 mb-8">Пройди тест и скачай сертификат в PDF</p>
+            
+            <input type="text" id="user-name" placeholder="ТВОЕ ИМЯ" 
+                   class="w-full bg-slate-900 border-2 border-slate-700 rounded-xl p-4 mb-4 text-center text-xl font-bold focus:border-blue-500 outline-none transition-all">
+            
+            <button onclick="startQuiz()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-5 rounded-xl text-xl shadow-lg transition-transform active:scale-95">
+                НАЧАТЬ ТЕСТ
+            </button>
+        </div>
+
+        <!-- ЭКРАН ТЕСТА -->
+        <div id="quiz-screen" class="hidden glass p-8 rounded-3xl shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <span id="progress-tag" class="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-md text-xs font-bold uppercase">Вопрос 1/20</span>
+                <div class="w-32 h-2 bg-slate-800 rounded-full overflow-hidden">
+                    <div id="progress-bar" class="h-full bg-blue-500" style="width: 5%"></div>
+                </div>
+            </div>
+            <h2 id="q-text" class="text-2xl font-bold mb-8 min-h-[80px]">Текст вопроса</h2>
+            <div id="options-list" class="space-y-3"></div>
+        </div>
+
+        <!-- ЭКРАН РЕЗУЛЬТАТОВ С КНОПКОЙ СКАЧАТЬ -->
+        <div id="result-screen" class="hidden glass p-10 rounded-3xl shadow-2xl text-center">
+            <div class="text-6xl mb-4">🏆</div>
+            <h2 class="text-3xl font-black mb-2 uppercase">Результат</h2>
+            <p id="score-val" class="text-7xl font-black text-blue-400 mb-8">0/20</p>
+            
+            <div id="success-zone" class="hidden">
+                <!-- САМА КНОПКА СКАЧАТЬ -->
+                <button onclick="downloadPDF()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-5 rounded-2xl text-2xl shadow-[0_0_20px_rgba(16,185,129,0.4)] flex items-center justify-center gap-3 mb-4 transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    СКАЧАТЬ PDF
+                </button>
+                <p class="text-slate-400 text-sm mb-8 italic">Сертификат готов к загрузке</p>
+            </div>
+
+            <div id="fail-zone" class="hidden mb-8">
+                <p class="text-red-400 font-bold mb-4">Нужно минимум 15 баллов для сертификата</p>
+            </div>
+
+            <button onclick="location.reload()" class="text-slate-500 hover:text-white font-bold uppercase tracking-widest text-sm">
+                Попробовать еще раз
+            </button>
+        </div>
+    </div>
+
+    <!-- СКРЫТЫЙ ШАБЛОН ДЛЯ PDF -->
+    <div id="cert-template">
+        <div style="border: 4px solid #38bdf8; padding: 40px;">
+            <h1 style="font-size: 60px; font-weight: 900; margin-bottom: 10px; color: white;">СЕРТИФИКАТ</h1>
+            <p style="font-size: 20px; color: #94a3b8; margin-bottom: 40px;">О прохождении квалификационного теста</p>
+            
+            <p style="font-size: 24px; color: #94a3b8;">Настоящим подтверждается, что</p>
+            <h2 id="pdf-name" style="font-size: 48px; font-weight: bold; color: #38bdf8; margin: 20px 0; text-transform: uppercase;">Имя Фамилия</h2>
+            
+            <p style="font-size: 22px; color: white; margin-bottom: 60px;">Успешно прошел тест по основам Python</p>
+            
+            <div style="display: flex; justify-content: space-between; margin-top: 50px; font-family: monospace;">
+                <div style="text-align: left;">
+                    <p style="color: #64748b; margin: 0;">ДАТА</p>
+                    <p id="pdf-date" style="font-size: 20px; margin: 5px 0;">01.01.2024</p>
+                </div>
+                <div style="text-align: right;">
+                    <p style="color: #64748b; margin: 0;">РЕЗУЛЬТАТ</p>
+                    <p id="pdf-res" style="font-size: 20px; margin: 5px 0;">20 / 20</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const questions = [
+            ["Что такое Python?", ["Язык программирования", "Система", "Браузер"], 0],
+            ["Комментарий в Python?", ["//", "#", "/*"], 1],
+            ["Тип данных числа 10?", ["str", "int", "bool"], 1],
+            ["Как вывести текст?", ["print()", "echo()", "write()"], 0],
+            ["Что такое список?", ["Файл", "Тип данных", "Функция"], 1],
+            ["Оператор сравнения?", ["==", "=", "!="], 0],
+            ["Создание функции?", ["def", "func", "function"], 0],
+            ["Цикл в Python?", ["for", "repeat", "loop"], 0],
+            ["Что такое переменная?", ["Хранилище", "Команда", "Ошибка"], 0],
+            ["Тип True/False?", ["int", "bool", "str"], 1],
+            ["Начало условия?", ["if", "when", "check"], 0],
+            ["Что делает input()?", ["Выводит", "Вводит", "Удаляет"], 1],
+            ["Тип строки?", ["int", "str", "bool"], 1],
+            ["Цикл while?", ["Повторение", "Ошибка", "Функция"], 0],
+            ["Завершить программу?", ["exit()", "stop()", "end()"], 0],
+            ["Что такое словарь?", ["dict", "list", "set"], 0],
+            ["Слияние строк?", ["+", "&", "%"], 0],
+            ["Длина объекта?", ["len()", "size()", "count()"], 0],
+            ["Что делает import?", ["Удаляет", "Подключает", "Создаёт"], 1],
+            ["Что такое IDE?", ["Редактор кода", "Игра", "Сайт"], 0]
+        ];
+
+        let cur = 0, score = 0, name = "";
+
+        function startQuiz() {
+            name = document.getElementById('user-name').value.trim() || "Ученик";
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('quiz-screen').classList.remove('hidden');
+            render();
+        }
+
+        function render() {
+            const q = questions[cur];
+            document.getElementById('progress-tag').innerText = `Вопрос ${cur+1}/20`;
+            document.getElementById('progress-bar').style.width = `${((cur+1)/20)*100}%`;
+            document.getElementById('q-text').innerText = q[0];
+            const list = document.getElementById('options-list');
+            list.innerHTML = '';
+            q[1].forEach((o, i) => {
+                const b = document.createElement('button');
+                b.className = "w-full text-left p-4 bg-slate-800/50 border border-slate-700 rounded-xl hover:bg-blue-600 hover:border-blue-400 transition-all font-bold";
+                b.innerText = o;
+                b.onclick = () => { if(i === q[2]) score++; cur++; if(cur < 20) render(); else finish(); };
+                list.appendChild(b);
+            });
+        }
+
+        function finish() {
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('hidden');
+            document.getElementById('score-val').innerText = `${score}/20`;
+            if(score >= 15) {
+                document.getElementById('success-zone').classList.remove('hidden');
+            } else {
+                document.getElementById('fail-zone').classList.remove('hidden');
+            }
+        }
+
+        async function downloadPDF() {
+            // Подготовка данных в невидимом шаблоне
+            document.getElementById('pdf-name').innerText = name;
+            document.getElementById('pdf-res').innerText = `${score} / 20`;
+            document.getElementById('pdf-date').innerText = new Date().toLocaleDateString();
+
+            const cert = document.getElementById('cert-template');
+            
+            // Снятие "скриншота"
+            const canvas = await html2canvas(cert, { scale: 2 });
+            const imgData = canvas.toDataURL('image/png');
+            
+            // Создание PDF
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('l', 'px', [canvas.width, canvas.height]);
+            pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+            
+            // Скачивание
+            pdf.save(`Python_Certificate_${name}.pdf`);
+        }
+    </script>
+</body>
+</html>
